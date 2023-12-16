@@ -1,7 +1,7 @@
 #!/bin/bash
 set -u
 
-## Nanny v2.0
+## Nanny v2.1
 
 # To install:
 # - ./nanny.sh host1 host2 host3 ...
@@ -14,13 +14,15 @@ interval=10 # check every interval seconds
 reporting=90 # interval x reporting = reporting interval
 cooldown=60 # wait cooldown seconds for mitm before checking
 log="/sdcard/nanny.log" # log for all output, cleared for every run of nanny.
+connection_min=1 # Number of upsteam ws connections to require. Could optimise to 1+workers.
+mitm="com.gocheats.launcher" # package name of mitm
 
+# Nothing to configure below here
 targets=("$@")
 
 for target in "${targets[@]}"; do
   adb connect "$target" 
   cat<<EOT | adb -s "$target" shell "su -c 'cat > /data/adb/service.d/nanny.sh && chmod +x /data/adb/service.d/nanny.sh'"
-
 #!/system/bin/sh
 # ^ says sh, but we assume it to be ash
 # This script rendered at $(date -u +%Y-%m-%dT%T) for $target
@@ -45,12 +47,16 @@ if [[ "\$1" != "nanny" ]]; then
 fi
 
 rotom="\$(grep rotom_url /data/local/tmp/config.json | cut -d \" -f 4)"
-rotom_host="\$(echo \$rotom | cut -d / -f 3)"
+rotom_host="\$(echo \$rotom | cut -d / -f 3 | cut -d : -f 1)"
+rotom_port="\$(echo \$rotom | cut -d / -f 3 | cut -sd : -f 2)"  # if there is a manual port
 rotom_proto="\$(echo \$rotom | cut -d : -f 1)"
-rotom_ip=\$(nslookup "\$rotom_host" | tail -n 1 | cut -d ' ' -f 3)
+rotom_ip="\$(nslookup "\$rotom_host" | grep Address | tail -n 1 | awk -F ': ' '{print \$2}')"
 
-rotom_port=80
-[[ "\$rotom_proto" == "wss" ]] && rotom_port=433
+if [ -z "\$rotom_port" ]; then  # no manual port defined
+	rotom_port=80
+elif [[ "\$rotom_proto" == "wss" ]]; then
+	rotom_port=433
+fi
 
 echo "Nanny starting at \$(date +%Y-%m-%dT%T), expected rotom conn: \${rotom_ip}:\${rotom_port}"
 echo "Checking every ${interval}s but reporting success only every ~$((interval * reporting))s."
@@ -59,8 +65,8 @@ sleep "$cooldown"
 
 checks=0
 while true; do
-	while [[ \$(pidof com.gocheats.launcher) ]]; do
-		if [[ \$(ss -pnt | grep pokemongo | grep "\${rotom_ip}:\${rotom_port}" | wc -l) -lt 1 ]]; then
+	while [[ \$(pidof "$mitm") ]]; do
+		if [[ \$(ss -pnt | grep pokemongo | grep "\${rotom_ip}:\${rotom_port}" | wc -l) -lt "$connection_min" ]]; then
 			echo "DISCONNECT at \$(date +%Y-%m-%dT%T)"
 			break
 		fi
@@ -73,7 +79,7 @@ while true; do
 	echo "TAKING_ACTION at \$(date +%Y-%m-%dT%T) (check #\${checks})"
 	checks=0  # reset counter
 	am force-stop com.nianticlabs.pokemongo
-	am start com.gocheats.launcher/com.gocheats.launcher.MainActivity
+	monkey -p "$mitm" 1
 	echo "PAUSE_CHECKS at \$(date +%Y-%m-%dT%T)"
 	sleep "$cooldown"  # give mitm a bit of time to get up
 	echo "RESUME_CHECKS at \$(date +%Y-%m-%dT%T)"
