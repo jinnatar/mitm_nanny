@@ -1,10 +1,10 @@
 # MitM Nanny
 
 ## Installation:
-
+- The script is intended to be installed from a Unix/Linux like environment and depends on having `bash` & `adb` available.
 - All arguments to `nanny.sh` are interpreted as adb reachable addresses.
 - `nanny.sh` handles the connection & installation for you and embeds the nanny script itself: `./nanny.sh host1 host2 host3 192.168.1.21`
-- If you have a range of devices, you can use a bash/zsh range expansion: ./nanny.sh atv0{1..99}
+- If you have a range of devices, you can use a bash/zsh range expansion: `./nanny.sh atv0{1..99}`
 - Once pushed to devices, reboot them to activate nanny.
 - Monitor `/sdcard/nanny.log` to see what's going on.
 
