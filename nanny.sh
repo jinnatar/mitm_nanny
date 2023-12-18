@@ -50,7 +50,8 @@ rotom="\$(grep rotom_url /data/local/tmp/config.json | cut -d \" -f 4)"
 rotom_host="\$(echo \$rotom | cut -d / -f 3 | cut -d : -f 1)"
 rotom_port="\$(echo \$rotom | cut -d / -f 3 | cut -sd : -f 2)"  # if there is a manual port
 rotom_proto="\$(echo \$rotom | cut -d : -f 1)"
-rotom_ip="\$(nslookup "\$rotom_host" | grep Address | tail -n 1 | awk -F ': ' '{print \$2}')"
+# Dirty hack to resolve a host where no dns tools are available.
+rotom_ip="\$(ping -c 1 "\$rotom_host" | grep PING | cut -d \( -f 2 | cut -d \) -f 1)"
 
 if [ -z "\$rotom_port" ]; then  # no manual port defined
 	rotom_port=80
