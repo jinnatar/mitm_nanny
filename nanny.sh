@@ -1,7 +1,7 @@
 #!/bin/bash
 set -u
 
-## Nanny v2.1
+nanny_version="2.2"
 
 # To install:
 # - ./nanny.sh host1 host2 host3 ...
@@ -25,7 +25,7 @@ for target in "${targets[@]}"; do
   cat<<EOT | adb -s "$target" shell "su -c 'cat > /data/adb/service.d/nanny.sh && chmod +x /data/adb/service.d/nanny.sh'"
 #!/system/bin/sh
 # ^ says sh, but we assume it to be ash
-# This script rendered at $(date -u +%Y-%m-%dT%T) for $target
+# This script (nanny v${nanny_version}) was rendered at $(date -u +%Y-%m-%dT%T) for $target
 
 # Wait a bit to work out Magisk kinks
 while [ "\$(getprop sys.boot_completed | tr -d '\r')" != "1" ]; do sleep 1; done
