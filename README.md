@@ -12,8 +12,22 @@
 - Once pushed to devices, reboot them to activate nanny.
 - Monitor `/sdcard/nanny.log` to see what's going on.
 
+## Alternative low-tech installation:
+If you don't want to customize anything and can't run `nanny.sh` due to not having a bash environment to run it in, you could use `manual_nanny.sh` instead. It's a pre-rendered default settings nanny script.
+1. Somehow `adb push` the file onto a device. For example `adb push manual_nanny.sh /sdcard`
+2. With root permissions, place it into `/data/adb/service.d/`. For example `su -c "mv /sdcard/manual_nanny.sh /data/adb/service.d/"`
+3. Make sure the script is executable: `su -c "chmod +x /data/adb/service.d/manual_nanny.sh"`
+
+## Upgrading
+Just repeat the installation steps & reboot!
+
+## Stopping and removing Nanny
+1. Remove the script, for example `adb -s $host shell 'su -c "rm /data/adb/service.d/nanny.sh"'`
+2. Reboot the device to stop the running copy. In theory you could just find the right pid and kill that, but it's annoying.
+
 ## Known limitations
 - Action is taken by default only if there are zero upstream connections. This could be autodetected to control connection + worker connections, but doesn't seem to be necessary right now and could cause useless churn.
+
 
 ## Config
 The script has a handful of variables set at the top you could customize, but the defaults work well.

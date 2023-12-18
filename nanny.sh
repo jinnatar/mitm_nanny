@@ -88,4 +88,4 @@ done
 EOT
 
   done
-echo "Reboot devices at your leisure to activate Nanny. Check $log to see what's going on."
+>&2 echo "Reboot devices at your leisure to activate Nanny. Check $log to see what's going on."
