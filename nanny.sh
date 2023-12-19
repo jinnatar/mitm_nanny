@@ -1,7 +1,7 @@
 #!/bin/bash
 set -u
 
-nanny_version="2.3"
+nanny_version="2.4"
 
 # To install:
 # - ./nanny.sh host1 host2 host3 ...
@@ -30,11 +30,12 @@ for target in "${targets[@]}"; do
 mitm="$mitm"
 mitm_slug="\${mitm: -10}"
 
-# Wait a bit to work out Magisk kinks
-while [ "\$(getprop sys.boot_completed | tr -d '\r')" != "1" ]; do sleep 1; done
-sleep 10
-
-touch "$log"
+# Wait a bit to work out Magisk kinks, but only on initial bootstrap run
+if [[ "\$1" != "nanny" ]]; then
+	while [ "\$(getprop sys.boot_completed | tr -d '\r')" != "1" ]; do sleep 1; done
+	sleep 10
+	touch "$log"
+fi
 
 # we need root
 if [[ "\$(whoami)" != "root" ]]; then
@@ -71,8 +72,7 @@ elif [[ "\$rotom_proto" == "wss" ]]; then
 	rotom_port=433
 fi
 
-
-echo "Nanny starting at \$(date +%Y-%m-%dT%T), expected rotom conn: \${rotom_ip}:\${rotom_port} from either pogo or \$mitm_slug"
+echo "Nanny starting at \$(date +%Y-%m-%dT%T), pid: \$\$, expected rotom conn: \${rotom_ip}:\${rotom_port} from either pogo or \$mitm_slug"
 echo "Checking every ${interval}s but reporting success only every ~$((interval * reporting))s."
 echo "First check in ${cooldown}s to give the mitm a bit of space."
 sleep "$cooldown"
