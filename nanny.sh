@@ -21,7 +21,8 @@ mitm="com.gocheats.launcher" # package name of mitm
 targets=("$@")
 
 for target in "${targets[@]}"; do
-  adb connect "$target" 
+  adb connect "$target"
+  sleep 0.1
   cat<<EOT | adb -s "$target" shell "su -c 'cat > /data/adb/service.d/nanny.sh && chmod +x /data/adb/service.d/nanny.sh'"
 #!/system/bin/sh
 # ^ says sh, but we assume it to be ash
