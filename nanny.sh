@@ -16,12 +16,18 @@ cooldown=60 # wait cooldown seconds for mitm before checking
 log="/sdcard/nanny.log" # log for all output, cleared for every run of nanny.
 connection_min=1 # Number of upsteam ws connections to require. Could optimise to 1+workers.
 mitm="com.gocheats.launcher" # package name of mitm
+adb_timeout=2 # Max connection timeout in seconds for ADB. May need to increase if your devices are over WAN
 
 # Nothing to configure below here
 targets=("$@")
 
 for target in "${targets[@]}"; do
+  # The connect may or may not block until connected. No exit value we could use. ¯\_(ツ)_/¯
   adb connect "$target" 
+  # Wait until we have a connection to proceed, with a timeout.
+  timeout "$adb_timeout" adb -s "$target" wait-for-device
+  [[ "$?" -ne 0 ]] && >&2 echo "Failed to connect to $target, skipping." && continue
+  # Connected, render & push the script.
   cat<<EOT | adb -s "$target" shell "su -c 'cat > /data/adb/service.d/nanny.sh && chmod +x /data/adb/service.d/nanny.sh'"
 #!/system/bin/sh
 # ^ says sh, but we assume it to be ash
@@ -86,6 +92,7 @@ while true; do
 	echo "RESUME_CHECKS at \$(date +%Y-%m-%dT%T)"
 done
 EOT
-
+  [[ "$?" -ne 0 ]] && >&2 echo "Failed to push script to $target." && continue
+  >&2 echo "Finished with $target."
   done
 >&2 echo "Reboot devices at your leisure to activate Nanny. Check $log to see what's going on."
