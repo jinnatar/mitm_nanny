@@ -5,7 +5,7 @@
 - The MitM is checked to have at least one outbound connection to the upstream websocket.
 
 ## Installation:
-- The script is intended to be installed from a Unix/Linux like environment and depends on having `bash` & `adb` available.
+- The script is intended to be installed from a Unix/Linux like environment and depends on having GNU coreutils, `bash` & `adb` available.
 - All arguments to `nanny.sh` are interpreted as adb reachable addresses.
 - `nanny.sh` handles the connection & installation for you and embeds the nanny script itself: `./nanny.sh host1 host2 host3 192.168.1.21`
 - If you have a range of devices, you can use a bash/zsh range expansion: `./nanny.sh atv0{1..99}`
@@ -37,6 +37,7 @@ The script has a handful of variables set at the top you could customize, but th
 - `log="/sdcard/nanny.log"` # log for all output, cleared for every run of nanny.
 - `connection_min=1` # Number of upsteam ws connections to require. Could optimise to 1+workers.
 - `mitm="com.gocheats.launcher"` # package name of mitm
+- `adb_timeout=2` # Max connection timeout in seconds for ADB. May need to increase if your devices are over WAN
 
 ## Sample session log
 ```
