@@ -1,7 +1,7 @@
 #!/bin/bash
 set -u
 
-nanny_version="2.2"
+nanny_version="2.3"
 
 # To install:
 # - ./nanny.sh host1 host2 host3 ...
@@ -27,6 +27,9 @@ for target in "${targets[@]}"; do
 # ^ says sh, but we assume it to be ash
 # This script (nanny v${nanny_version}) was rendered at $(date -u +%Y-%m-%dT%T) for $target
 
+mitm="$mitm"
+mitm_slug="\${mitm: -10}"
+
 # Wait a bit to work out Magisk kinks
 while [ "\$(getprop sys.boot_completed | tr -d '\r')" != "1" ]; do sleep 1; done
 sleep 10
@@ -46,7 +49,16 @@ if [[ "\$1" != "nanny" ]]; then
         exit \$?
 fi
 
-rotom="\$(grep rotom_url /data/local/tmp/config.json | cut -d \" -f 4)"
+
+if [[ -f /data/local/tmp/cosmog.json ]]; then
+	rotom="\$(grep rotom_worker_endpoint /data/local/tmp/cosmog.json | cut -d \" -f 4)"
+elif [[ -f /data/local/tmp/config.json ]]; then
+	rotom="\$(grep rotom_url /data/local/tmp/config.json | cut -d \" -f 4)"
+else
+	echo "\$(date +%Y-%m-%dT%T) -No mitm config found on device, cannot nanny upstream connections."
+	exit 1
+fi
+
 rotom_host="\$(echo \$rotom | cut -d / -f 3 | cut -d : -f 1)"
 rotom_port="\$(echo \$rotom | cut -d / -f 3 | cut -sd : -f 2)"  # if there is a manual port
 rotom_proto="\$(echo \$rotom | cut -d : -f 1)"
@@ -59,15 +71,16 @@ elif [[ "\$rotom_proto" == "wss" ]]; then
 	rotom_port=433
 fi
 
-echo "Nanny starting at \$(date +%Y-%m-%dT%T), expected rotom conn: \${rotom_ip}:\${rotom_port}"
+
+echo "Nanny starting at \$(date +%Y-%m-%dT%T), expected rotom conn: \${rotom_ip}:\${rotom_port} from either pogo or \$mitm_slug"
 echo "Checking every ${interval}s but reporting success only every ~$((interval * reporting))s."
 echo "First check in ${cooldown}s to give the mitm a bit of space."
 sleep "$cooldown"
 
 checks=0
 while true; do
-	while [[ \$(pidof "$mitm") ]]; do
-		if [[ \$(ss -pnt | grep pokemongo | grep "\${rotom_ip}:\${rotom_port}" | wc -l) -lt "$connection_min" ]]; then
+	while [[ \$(pidof "\$mitm") ]]; do
+		if [[ \$(ss -pnt | grep -E "\$mitm_slug|pokemongo" | grep -E "\${rotom_ip}(]){0,1}:\${rotom_port}" | wc -l) -lt "$connection_min" ]]; then
 			echo "DISCONNECT at \$(date +%Y-%m-%dT%T)"
 			break
 		fi
@@ -80,7 +93,7 @@ while true; do
 	echo "TAKING_ACTION at \$(date +%Y-%m-%dT%T) (check #\${checks})"
 	checks=0  # reset counter
 	am force-stop com.nianticlabs.pokemongo
-	monkey -p "$mitm" 1
+	monkey -p "\$mitm" 1
 	echo "PAUSE_CHECKS at \$(date +%Y-%m-%dT%T)"
 	sleep "$cooldown"  # give mitm a bit of time to get up
 	echo "RESUME_CHECKS at \$(date +%Y-%m-%dT%T)"

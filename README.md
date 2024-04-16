@@ -14,6 +14,7 @@
 
 ## Alternative low-tech installation:
 If you don't want to customize anything and can't run `nanny.sh` due to not having a bash environment to run it in, you could use `manual_nanny.sh` instead. It's a pre-rendered default settings nanny script.
+1. Edit `manual_nanny.sh` towards the top to set your MitM package name.
 1. Somehow `adb push` the file onto a device. For example `adb push manual_nanny.sh /sdcard`
 2. With root permissions, place it into `/data/adb/service.d/`. For example `su -c "mv /sdcard/manual_nanny.sh /data/adb/service.d/"`
 3. Make sure the script is executable: `su -c "chmod +x /data/adb/service.d/manual_nanny.sh"`
