@@ -1,7 +1,7 @@
 #!/bin/bash
 set -u
 
-nanny_version="2.4"
+nanny_version="2.5"
 
 # To install:
 # - ./nanny.sh host1 host2 host3 ...
@@ -10,15 +10,17 @@ nanny_version="2.4"
 # - Monitor /sdcard/nanny.log to see what's going on.
 
 # You could customise these values ¯\_(ツ)_/¯
-interval=10 # check every interval seconds
-reporting=90 # interval x reporting = reporting interval
-cooldown=60 # wait cooldown seconds for mitm before checking
+interval=30 # check every interval seconds
+reporting=30 # interval x reporting = reporting interval
+initial_cooldown=30 # wait initial_cooldown seconds on boot before action
+cooldown=240 # wait cooldown seconds for mitm before checking after an action
 log="/sdcard/nanny.log" # log for all output, cleared for every run of nanny.
-connection_min=1 # Number of upsteam ws connections to require. Could optimise to 1+workers.
-mitm="com.gocheats.launcher" # package name of mitm
+connection_min=1 # Number of upsteam ws connections to require. Not all mitms will support a value over 1.
+mitm="com.gocheats.launcher" # package name of mitm. You can also set the env variable NANNY_MITM to override at runtime.
 
 # Nothing to configure below here
 targets=("$@")
+mitm="${NANNY_MITM:-$mitm}"
 
 for target in "${targets[@]}"; do
   adb connect "$target" 
@@ -50,23 +52,27 @@ if [[ "\$1" != "nanny" ]]; then
         exit \$?
 fi
 
+# Adjust OOM score to hopefully not get randomly killed
+echo -1000 > /proc/self/oom_score_adj
 
+# Load upstream endpoint data from mitm config
 if [[ -f /data/local/tmp/cosmog.json ]]; then
 	rotom="\$(grep rotom_worker_endpoint /data/local/tmp/cosmog.json | cut -d \" -f 4)"
 elif [[ -f /data/local/tmp/config.json ]]; then
 	rotom="\$(grep rotom_url /data/local/tmp/config.json | cut -d \" -f 4)"
 else
-	echo "\$(date +%Y-%m-%dT%T) -No mitm config found on device, cannot nanny upstream connections."
+	echo "\$(date +%Y-%m-%dT%T) - No mitm config found on device, cannot nanny upstream connections."
 	exit 1
 fi
 
+# Split upstream to port, proto & host and turn host into an ip address
 rotom_host="\$(echo \$rotom | cut -d / -f 3 | cut -d : -f 1)"
 rotom_port="\$(echo \$rotom | cut -d / -f 3 | cut -sd : -f 2)"  # if there is a manual port
 rotom_proto="\$(echo \$rotom | cut -d : -f 1)"
 # Dirty hack to resolve a host where no dns tools are available.
 rotom_ip="\$(ping -c 1 "\$rotom_host" | grep PING | cut -d \( -f 2 | cut -d \) -f 1)"
 
-if [ -z "\$rotom_port" ]; then  # no manual port defined
+if [ -z "\$rotom_port" ]; then  # no manual port defined, assume websocket defaults
 	rotom_port=80
 elif [[ "\$rotom_proto" == "wss" ]]; then
 	rotom_port=433
@@ -75,7 +81,7 @@ fi
 echo "Nanny starting at \$(date +%Y-%m-%dT%T), pid: \$\$, expected rotom conn: \${rotom_ip}:\${rotom_port} from either pogo or \$mitm_slug"
 echo "Checking every ${interval}s but reporting success only every ~$((interval * reporting))s."
 echo "First check in ${cooldown}s to give the mitm a bit of space."
-sleep "$cooldown"
+sleep "$initial_cooldown"
 
 checks=0
 while true; do

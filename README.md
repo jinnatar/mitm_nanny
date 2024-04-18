@@ -1,8 +1,24 @@
 # MitM Nanny
 
 ## Checks performed
-- The MitM is checked to be running.
-- The MitM is checked to have at least one outbound connection to the upstream websocket.
+- The MitM is checked to be running and to have at least one outbound connection to the upstream websocket.
+- If those fail, the MitM is restarted.
+- That's it, and that's all you really need.
+
+<img align="right" src="logo512.png" alt="A logo of a pixel art nanny assisting an enthusiastic kitten." hspace="20"/>
+<br/><br/><br/><br/><br/>
+
+<!--ts-->
+* [MitM Nanny](#mitm-nanny)
+   * [Checks performed](#checks-performed)
+   * [Installation:](#installation)
+   * [Alternative low-tech installation:](#alternative-low-tech-installation)
+   * [Upgrading](#upgrading)
+   * [Stopping and removing Nanny](#stopping-and-removing-nanny)
+   * [Known limitations](#known-limitations)
+   * [Config](#config)
+   * [Sample session log](#sample-session-log)
+<!--te-->
 
 ## Installation:
 - The script is intended to be installed from a Unix/Linux like environment and depends on having `bash` & `adb` available.
@@ -24,7 +40,7 @@ Just repeat the installation steps & reboot!
 
 ## Stopping and removing Nanny
 1. Remove the script, for example `adb -s $host shell 'su -c "rm /data/adb/service.d/nanny.sh"'`
-2. Reboot the device to stop the running copy. In theory you could just find the right pid and kill that, but it's annoying.
+2. Reboot the device to stop the running copy, or see the top of `/sdcard/nanny.log` for the pid number and kill that one.
 
 ## Known limitations
 - Action is taken by default only if there are zero upstream connections. This could be autodetected to control connection + worker connections, but doesn't seem to be necessary right now and could cause useless churn.
@@ -32,12 +48,14 @@ Just repeat the installation steps & reboot!
 
 ## Config
 The script has a handful of variables set at the top you could customize, but the defaults work well.
-- `interval=10` # check every interval seconds
-- `reporting=90` # interval x reporting = reporting interval
-- `cooldown=60` # wait cooldown seconds for mitm before checking
+- `interval=30` # check every interval seconds
+- `reporting=30` # interval x reporting = reporting interval
+- `initial_cooldown=30` # wait initial_cooldown seconds on boot before action
+- `cooldown=240` # wait cooldown seconds for mitm before checking after an action
 - `log="/sdcard/nanny.log"` # log for all output, cleared for every run of nanny.
-- `connection_min=1` # Number of upsteam ws connections to require. Could optimise to 1+workers.
-- `mitm="com.gocheats.launcher"` # package name of mitm
+- `connection_min=1` # Number of upsteam ws connections to require. Not all mitms will support a value over 1.
+- `mitm="com.gocheats.launcher"` # package name of mitm. You can also set the env variable `NANNY_MITM` to override at runtime.
+
 
 ## Sample session log
 ```

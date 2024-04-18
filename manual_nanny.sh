@@ -1,6 +1,6 @@
 #!/system/bin/sh
 # ^ says sh, but we assume it to be ash
-# This script (nanny v2.4) was rendered at 2024-04-17T15:56:30 for manual_nanny
+# This script (nanny v2.5) was rendered at 2024-04-18T19:58:03 for manual_nanny
 
 mitm="com.gocheats.launcher"
 mitm_slug="${mitm: -10}"
@@ -25,32 +25,36 @@ if [[ "$1" != "nanny" ]]; then
         exit $?
 fi
 
+# Adjust OOM score to hopefully not get randomly killed
+echo -1000 > /proc/self/oom_score_adj
 
+# Load upstream endpoint data from mitm config
 if [[ -f /data/local/tmp/cosmog.json ]]; then
 	rotom="$(grep rotom_worker_endpoint /data/local/tmp/cosmog.json | cut -d \" -f 4)"
 elif [[ -f /data/local/tmp/config.json ]]; then
 	rotom="$(grep rotom_url /data/local/tmp/config.json | cut -d \" -f 4)"
 else
-	echo "$(date +%Y-%m-%dT%T) -No mitm config found on device, cannot nanny upstream connections."
+	echo "$(date +%Y-%m-%dT%T) - No mitm config found on device, cannot nanny upstream connections."
 	exit 1
 fi
 
+# Split upstream to port, proto & host and turn host into an ip address
 rotom_host="$(echo $rotom | cut -d / -f 3 | cut -d : -f 1)"
 rotom_port="$(echo $rotom | cut -d / -f 3 | cut -sd : -f 2)"  # if there is a manual port
 rotom_proto="$(echo $rotom | cut -d : -f 1)"
 # Dirty hack to resolve a host where no dns tools are available.
 rotom_ip="$(ping -c 1 "$rotom_host" | grep PING | cut -d \( -f 2 | cut -d \) -f 1)"
 
-if [ -z "$rotom_port" ]; then  # no manual port defined
+if [ -z "$rotom_port" ]; then  # no manual port defined, assume websocket defaults
 	rotom_port=80
 elif [[ "$rotom_proto" == "wss" ]]; then
 	rotom_port=433
 fi
 
 echo "Nanny starting at $(date +%Y-%m-%dT%T), pid: $$, expected rotom conn: ${rotom_ip}:${rotom_port} from either pogo or $mitm_slug"
-echo "Checking every 10s but reporting success only every ~900s."
-echo "First check in 60s to give the mitm a bit of space."
-sleep "60"
+echo "Checking every 30s but reporting success only every ~900s."
+echo "First check in 240s to give the mitm a bit of space."
+sleep "30"
 
 checks=0
 while true; do
@@ -61,15 +65,15 @@ while true; do
 		fi
 
 		# By default every 90 checks i.e. 15 minutes
-		[[ $((checks % 90)) -eq 0 ]] && echo "FINE at $(date +%Y-%m-%dT%T) (check #${checks})"
+		[[ $((checks % 30)) -eq 0 ]] && echo "FINE at $(date +%Y-%m-%dT%T) (check #${checks})"
 		let checks++
-		sleep 10
+		sleep 30
 	done
 	echo "TAKING_ACTION at $(date +%Y-%m-%dT%T) (check #${checks})"
 	checks=0  # reset counter
 	am force-stop com.nianticlabs.pokemongo
 	monkey -p "$mitm" 1
 	echo "PAUSE_CHECKS at $(date +%Y-%m-%dT%T)"
-	sleep "60"  # give mitm a bit of time to get up
+	sleep "240"  # give mitm a bit of time to get up
 	echo "RESUME_CHECKS at $(date +%Y-%m-%dT%T)"
 done
