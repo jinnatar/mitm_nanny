@@ -1,4 +1,5 @@
 # MitM Nanny
+This project is archived due to no longer having an environment in which it is relevant or thus testable. No reason why it won't work for a good while though given sufficient tweaks.
 
 ## Checks performed
 - The MitM is checked to be running and to have at least one outbound connection to the upstream websocket.
